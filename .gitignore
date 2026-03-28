@@ -5,3 +5,12 @@
 # データベース
 data/
 *.db
+
+# 環境変数
+.env
+.env.*
+
+# Pythonキャッシュ
+__pycache__/
+*.pyc
+*.pyo
