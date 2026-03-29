@@ -15,8 +15,98 @@ init_db()
 st.set_page_config(
     page_title="Tech0 Search v1.0",
     page_icon="🔍",
-    layout="wide"
+    layout="wide",
 )
+
+
+# ── 全体デザイン ───────────────────────────────────────────────────
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* ── サイドバー（ピンク系） ── */
+[data-testid="stSidebar"] {
+    background: #FBEAF0 !important;
+    border-right: 1px solid #F4C0D1 !important;
+}
+[data-testid="stSidebar"] * { color: #72243E !important; }
+[data-testid="stSidebar"] [data-testid="stMetricValue"] {
+    color: #3C3489 !important; font-size: 1.8rem !important;
+}
+[data-testid="stSidebar"] [data-testid="stButton"] > button {
+    background: #D4537E !important; color: #fff !important;
+    border: none !important; border-radius: 8px !important;
+}
+[data-testid="stSidebar"] [data-testid="stButton"] > button:hover {
+    background: #993556 !important;
+}
+
+/* ── タブ（パープル系） ── */
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    border-bottom: 1px solid #CECBF6; background: transparent; gap: 0;
+}
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    font-size: 0.82rem; color: #AFA9EC;
+    padding: 8px 18px; border-bottom: 2px solid transparent; background: transparent;
+}
+[data-testid="stTabs"] [aria-selected="true"] {
+    color: #534AB7 !important;
+    border-bottom: 2px solid #7F77DD !important;
+    background: transparent !important;
+}
+
+/* ── 検索入力（パープル） ── */
+[data-testid="stTextInput"] input {
+    background: #EEEDFE !important;
+    border: 1.5px solid #CECBF6 !important;
+    border-radius: 10px !important;
+    color: #3C3489 !important;
+    font-size: 0.9rem !important;
+}
+[data-testid="stTextInput"] input:focus {
+    border-color: #7F77DD !important;
+    box-shadow: 0 0 0 3px #EEEDFE88 !important;
+}
+[data-testid="stTextInput"] input::placeholder { color: #AFA9EC !important; }
+
+/* ── 件数セレクト（グリーン） ── */
+[data-testid="stSelectbox"] > div > div {
+    background: #E1F5EE !important;
+    border: 1.5px solid #9FE1CB !important;
+    border-radius: 10px !important;
+    color: #085041 !important;
+}
+
+/* ── 検索・クロール実行ボタン（ティール） ── */
+[data-testid="stButton"] > button {
+    background: #1D9E75 !important; color: #fff !important;
+    border: none !important; border-radius: 10px !important;
+    font-size: 0.85rem !important; font-weight: 500 !important;
+    padding: 10px 22px !important; transition: background 0.15s;
+}
+[data-testid="stButton"] > button:hover { background: #0F6E56 !important; }
+
+/* ── テキストエリア（クローラータブ） ── */
+[data-testid="stTextArea"] textarea {
+    background: #EEEDFE !important;
+    border: 1.5px solid #CECBF6 !important;
+    border-radius: 10px !important;
+    color: #3C3489 !important;
+}
+
+/* ── ページ全体の背景 ── */
+.main { background: #fff; }
+footer, #MainMenu { display: none; }
+</style>
+""", unsafe_allow_html=True)
+
+
+
 
 # ── キャッシュ付きインデックス構築 ─────────────────────────────
 @st.cache_resource
