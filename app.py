@@ -5,16 +5,16 @@ Streamlit アプリ本体。検索・クローラー・一覧の3タブ構成。
 
 import re
 import streamlit as st
-from database import init_db, get_all_pages, insert_page, log_search
+from database import init_db, get_all_documents, insert_document, log_search
 from ranking import get_engine, rebuild_index
 from crawler import crawl_url
 
 # アプリ起動時に DB を初期化する（テーブルが未作成なら作る）
 init_db()
 
-st.set_page_config(
-    page_title="Tech0 Search v1.0",
-    page_icon="🔍",
+st.set_document_config(
+    document_title="Tech0 Search v1.0",
+    document_icon="🔍",
     layout="wide",
 )
 
@@ -113,12 +113,12 @@ footer, #MainMenu { display: none; }
 def load_and_index():
     """全ページを DB から読み込み TF-IDF インデックスを構築する。
     @st.cache_resource により、アプリ起動中は一度だけ実行される。"""
-    pages = get_all_pages()
-    if pages:
-        rebuild_index(pages)
-    return pages
+    documents = get_all_documents()
+    if documents:
+        rebuild_index(documents)
+    return documents
 
-pages = load_and_index()
+documents = load_and_index()
 engine = get_engine()
 
 # ── ヘッダー ──────────────────────────────────────────────────
@@ -127,7 +127,7 @@ st.caption("PROJECT ZERO — 社内ナレッジ検索エンジン【TF-IDFラン
 
 with st.sidebar:
     st.header("DB の状態")
-    st.metric("登録ページ数", f"{len(pages)} 件")
+    st.metric("登録ページ数", f"{len(documents)} 件")
     if st.button("🔄 インデックスを更新"):
         st.cache_resource.clear()
         st.rerun()
@@ -156,7 +156,7 @@ with tab_search:
         st.divider()
 
         if results:
-            for i, page in enumerate(results, 1):
+            for i, document in enumerate(results, 1):
                 with st.container():
                     col_rank, col_title, col_score = st.columns([0.5, 4, 1])
                     with col_rank:
@@ -164,29 +164,29 @@ with tab_search:
                         medal = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else str(i)
                         st.markdown(f"### {medal}")
                     with col_title:
-                        st.markdown(f"### {page['title']}")
+                        st.markdown(f"### {document['title']}")
                     with col_score:
                         # relevance_score（最終スコア）と base_score（TF-IDFのみ）を両方表示
-                        st.metric("スコア", f"{page['relevance_score']}",
-                                  delta=f"基準: {page['base_score']}")
+                        st.metric("スコア", f"{document['relevance_score']}",
+                                  delta=f"基準: {document['base_score']}")
 
-                    desc = page.get("description", "")
+                    desc = document.get("description", "")
                     if desc:
                         st.markdown(f"*{desc[:200]}{'...' if len(desc) > 200 else ''}*")
 
-                    kw = page.get("keywords", "") or ""
+                    kw = document.get("keywords", "") or ""
                     if kw:
                         kw_list = [k.strip() for k in kw.split(",") if k.strip()][:5]
                         tags = " ".join([f"`{k}`" for k in kw_list])
                         st.markdown(f"🏷️ {tags}")
 
                     col1, col2, col3, col4 = st.columns(4)
-                    with col1: st.caption(f"👤 {page.get('author', '不明') or '不明'}")
-                    with col2: st.caption(f"📊 {page.get('word_count', 0)} 語")
-                    with col3: st.caption(f"📁 {page.get('category', '未分類') or '未分類'}")
-                    with col4: st.caption(f"📅 {(page.get('crawled_at', '') or '')[:10]}")
+                    with col1: st.caption(f"👤 {document.get('author', '不明') or '不明'}")
+                    with col2: st.caption(f"📊 {document.get('word_count', 0)} 語")
+                    with col3: st.caption(f"📁 {document.get('category', '未分類') or '未分類'}")
+                    with col4: st.caption(f"📅 {(document.get('crawled_at', '') or '')[:10]}")
 
-                    st.markdown(f"🔗 [{page['url']}]({page['url']})")
+                    st.markdown(f"🔗 [{document['url']}]({document['url']})")
                     st.divider()
         else:
             st.info("該当するページが見つかりませんでした")
@@ -246,7 +246,7 @@ with tab_crawl:
 
             for i, r in enumerate(st.session_state.crawl_results, start=1):
                 progress_text.write(f"📥 {i} / {total} 件登録中...")
-                insert_page(r)
+                insert_document(r)
                 progress_bar.progress(i / total)
 
             progress_text.write(f"✅ {total} / {total} 件 登録完了！")
@@ -257,18 +257,18 @@ with tab_crawl:
 
 # ── 一覧タブ ───────────────────────────────────────────────────
 with tab_list:
-    st.subheader(f"📋 登録済みページ一覧（{len(pages)} 件）")
-    if not pages:
+    st.subheader(f"📋 登録済みページ一覧（{len(documents)} 件）")
+    if not documents:
         st.info("登録されているページがありません。クローラータブからページを追加してください。")
     else:
-        for page in pages:
-            with st.expander(f"📄 {page['title']}"):
-                st.markdown(f"**URL：** {page['url']}")
-                st.markdown(f"**説明：** {page.get('description', '（なし）') or '（なし）'}")
+        for document in documents:
+            with st.expander(f"📄 {document['title']}"):
+                st.markdown(f"**URL：** {document['url']}")
+                st.markdown(f"**説明：** {document.get('description', '（なし）') or '（なし）'}")
                 col1, col2, col3 = st.columns(3)
-                with col1: st.caption(f"語数：{page.get('word_count', 0)}")
-                with col2: st.caption(f"作成者：{page.get('author', '不明') or '不明'}")
-                with col3: st.caption(f"カテゴリ：{page.get('category', '未分類') or '未分類'}")
+                with col1: st.caption(f"語数：{document.get('word_count', 0)}")
+                with col2: st.caption(f"作成者：{document.get('author', '不明') or '不明'}")
+                with col3: st.caption(f"カテゴリ：{document.get('category', '未分類') or '未分類'}")
 
 st.divider()
 st.caption("© 2025 PROJECT ZERO — Tech0 Search v1.0 | Powered by TF-IDF")
