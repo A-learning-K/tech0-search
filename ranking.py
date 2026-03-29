@@ -97,18 +97,18 @@ def cosine_sim_dict(vec1: dict, vec2: dict) -> float:
     return dot / (norm1 * norm2)
 
 
-def manual_search(query: str, pages: list, top_n: int = 20) -> list:
+def manual_search(query: str, documents: list, top_n: int = 20) -> list:
     """
     手実装版の簡易検索
     calc_tf / calc_idf を使って TF-IDF を作り、
     コサイン類似度で検索する
     """
-    if not query.strip() or not pages:
+    if not query.strip() or not documents:
         return []
 
     # 各ページから検索対象テキストを作る
     docs = []
-    for p in pages:
+    for p in documents:
         kw = p.get("keywords", "") or ""
         if isinstance(kw, str):
             kw_list = [k.strip() for k in kw.split(",") if k.strip()]
@@ -118,7 +118,7 @@ def manual_search(query: str, pages: list, top_n: int = 20) -> list:
         text = " ".join([
             (p.get("title", "") + " ") * 3,
             (p.get("description", "") + " ") * 2,
-            (p.get("full_text", "") + " "),
+            (p.get("content", "") + " "),
             (" ".join(kw_list) + " ") * 2,
         ])
         docs.append(text)
@@ -142,7 +142,7 @@ def manual_search(query: str, pages: list, top_n: int = 20) -> list:
         score = cosine_sim_dict(query_tfidf, page_tfidf)
 
         if score > 0.01:
-            page = pages[idx].copy()
+            page = documents[idx].copy()
             page["relevance_score"] = round(score * 100, 1)
             results.append(page)
 
@@ -167,20 +167,20 @@ class SearchEngine:
             sublinear_tf=True
         )
         self.tfidf_matrix = None
-        self.pages = []
+        self.documents = []
         self.is_fitted = False
 
-    def build_index(self, pages: list):
+    def build_index(self, documents: list):
         """
         全ページの TF-IDF インデックスを構築する
         """
-        if not pages:
+        if not documents:
             return
 
-        self.pages = pages
+        self.documents = documents
 
         corpus = []
-        for p in pages:
+        for p in documents:
             kw = p.get("keywords", "") or ""
             if isinstance(kw, str):
                 kw_list = [k.strip() for k in kw.split(",") if k.strip()]
@@ -190,7 +190,7 @@ class SearchEngine:
             text = " ".join([
                 (p.get("title", "") + " ") * 3,
                 (p.get("description", "") + " ") * 2,
-                (p.get("full_text", "") + " "),
+                (p.get("content", "") + " "),
                 (" ".join(kw_list) + " ") * 2,
             ])
             corpus.append(text)
@@ -211,7 +211,7 @@ class SearchEngine:
         results = []
         for idx, base_score in enumerate(similarities):
             if base_score > 0.01:
-                page = self.pages[idx].copy()
+                page = self.documents[idx].copy()
                 final_score = self._calculate_final_score(page, base_score, query)
 
                 page["relevance_score"] = round(float(final_score) * 100, 1)
@@ -274,7 +274,7 @@ def get_engine() -> SearchEngine:
     return _engine
 
 
-def rebuild_index(pages: List[dict]):
+def rebuild_index(documents: List[dict]):
     """インデックスを再構築する"""
     engine = get_engine()
-    engine.build_index(pages)
+    engine.build_index(documents)
