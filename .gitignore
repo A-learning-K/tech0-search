@@ -14,3 +14,4 @@ data/
 __pycache__/
 *.pyc
 *.pyo
+data/tech0_search.db
