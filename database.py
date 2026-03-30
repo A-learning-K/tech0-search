@@ -38,57 +38,56 @@ def init_db():
     conn.close()
 
 
-def insert_page(page: dict) -> int:
-    """
-    ページ情報を DB に登録する。
+def insert_document(document: dict) -> int:    #pageをdocumentに変更
+     """
+    ドキュメント情報を DB に登録する。
 
     INSERT OR REPLACE：同じ URL のデータがあれば上書き、なければ新規追加する。
     これにより「同じページを再クロールしたときに最新データに更新できる」。
 
     Args:
-        page: ページ情報の辞書（crawl_url() の返り値と同形式）
+        document: ドキュメント情報の辞書（crawl_url() の返り値と同形式）
 
     Returns:
         登録された行の id
     """
     conn = get_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor() 
 
     cursor.execute("""
-        INSERT OR REPLACE INTO pages
-            (url, title, description, full_text, author, category, word_count, crawled_at)
+        INSERT OR REPLACE INTO documents                        
+            (title, department, author, category, keywords, full_text, word_count)  
+
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        page["url"],
-        page["title"],
-        page.get("description", ""),
-        page.get("full_text", ""),
-        page.get("author", ""),
-        page.get("category", ""),
-        page.get("word_count", 0),
-        page.get("crawled_at", datetime.now().isoformat()),
+        document["title"],              #pageからdocumentに変更
+        document.get("department", ""), #pageからdocumentに変更
+        document.get("full_text", ""),  #pageからdocumentに変更
+        document.get("author", ""),     #pageからdocumentに変更
+        document.get("category", ""),   #pageからdocumentに変更
+        document.get("word_count", 0),  #pageからdocumentに変更
+        document.get("keywords", "")    #pageからdocumentに変更
+        
     ))
 
-    page_id = cursor.lastrowid    # 登録された行の id を取得する
+    document_id = cursor.lastrowid    # 登録された行の id を取得する #pageからdocumentに変更
     conn.commit()
     conn.close()
-    return page_id
+    return document_id      #pageからdocumentに変更
 
 
-def get_all_pages() -> list:
-    """全ページを登録日時の新しい順で取得する。"""
+def get_all_documents() -> list:
+    """全ドキュメントを登録日時の新しい順で取得する。"""
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM pages ORDER BY created_at DESC")
+    cursor.execute("SELECT * FROM documents ORDER BY created_at DESC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]    # sqlite3.Row を辞書に変換して返す
 
 
-def log_search(query: str, results_count: int, user_id: str = None) -> int:
+
     """
-    検索ログを記録する（Step7発展課題で実装予定）
-    現在はスタブ（空の関数）として定義しています。
-    Step7で実際の記録処理を実装してください。
+    log_search()を丸ごと削除。この下のpassも削除
     """
-    pass  # Step7で実装してください
+    
