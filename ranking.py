@@ -106,19 +106,19 @@ def manual_search(query: str, documents: list, top_n: int = 20) -> list:
     if not query.strip() or not documents:
         return []
 
-    # 各ページから検索対象テキストを作る
+    # 各文書から検索対象テキストを作る
     docs = []
-    for p in documents:
-        kw = p.get("keywords", "") or ""
+    for document in documents:
+        kw = document.get("keywords", "") or ""
         if isinstance(kw, str):
             kw_list = [k.strip() for k in kw.split(",") if k.strip()]
         else:
             kw_list = kw
 
         text = " ".join([
-            (p.get("title", "") + " ") * 3,
-            (p.get("description", "") + " ") * 2,
-            (p.get("content", "") + " "),
+            (document.get("title", "") + " ") * 3,
+            (document.get("description", "") + " ") * 2,
+            (document.get("content", "") + " "),
             (" ".join(kw_list) + " ") * 2,
         ])
         docs.append(text)
@@ -136,15 +136,15 @@ def manual_search(query: str, documents: list, top_n: int = 20) -> list:
 
     results = []
     for idx, tokens in enumerate(docs_tokens):
-        page_tf = calc_tf(tokens)
-        page_tfidf = calc_tfidf(page_tf, idf)
+        document_tf = calc_tf(tokens)
+        document_tfidf = calc_tfidf(document_tf, idf)
 
-        score = cosine_sim_dict(query_tfidf, page_tfidf)
+        score = cosine_sim_dict(query_tfidf, document_tfidf)
 
         if score > 0.01:
-            page = documents[idx].copy()
-            page["relevance_score"] = round(score * 100, 1)
-            results.append(page)
+            document = documents[idx].copy()
+            document["relevance_score"] = round(score * 100, 1)
+            results.append(document)
 
     results.sort(key=lambda x: x["relevance_score"], reverse=True)
     return results[:top_n]
@@ -172,7 +172,7 @@ class SearchEngine:
 
     def build_index(self, documents: list):
         """
-        全ページの TF-IDF インデックスを構築する
+        全文書の TF-IDF インデックスを構築する
         """
         if not documents:
             return
@@ -180,17 +180,17 @@ class SearchEngine:
         self.documents = documents
 
         corpus = []
-        for p in documents:
-            kw = p.get("keywords", "") or ""
+        for document in documents:
+            kw = document.get("keywords", "") or ""
             if isinstance(kw, str):
                 kw_list = [k.strip() for k in kw.split(",") if k.strip()]
             else:
                 kw_list = kw
 
             text = " ".join([
-                (p.get("title", "") + " ") * 3,
-                (p.get("description", "") + " ") * 2,
-                (p.get("content", "") + " "),
+                (document.get("title", "") + " ") * 3,
+                (document.get("description", "") + " ") * 2,
+                (document.get("content", "") + " "),
                 (" ".join(kw_list) + " ") * 2,
             ])
             corpus.append(text)
@@ -211,37 +211,37 @@ class SearchEngine:
         results = []
         for idx, base_score in enumerate(similarities):
             if base_score > 0.01:
-                page = self.documents[idx].copy()
-                final_score = self._calculate_final_score(page, base_score, query)
+                document = self.documents[idx].copy()
+                final_score = self._calculate_final_score(document, base_score, query)
 
-                page["relevance_score"] = round(float(final_score) * 100, 1)
-                page["base_score"] = round(float(base_score) * 100, 1)
-                results.append(page)
+                document["relevance_score"] = round(float(final_score) * 100, 1)
+                document["base_score"] = round(float(base_score) * 100, 1)
+                results.append(document)
 
         results.sort(key=lambda x: x["relevance_score"], reverse=True)
         return results[:top_n]
 
-    def _calculate_final_score(self, page: dict, base_score: float, query: str) -> float:
+    def _calculate_final_score(self, document: dict, base_score: float, query: str) -> float:
         """
         複数の要素を組み合わせて最終スコアを計算する
         """
         score = base_score
         query_lower = query.lower()
 
-        title = page.get("title", "").lower()
+        title = document.get("title", "").lower()
         if query_lower == title:
             score *= 1.8
         elif query_lower in title:
             score *= 1.4
 
-        keywords = page.get("keywords", [])
+        keywords = document.get("keywords", [])
         if isinstance(keywords, str):
             keywords = keywords.split(",")
         keywords_lower = [k.strip().lower() for k in keywords]
         if query_lower in keywords_lower:
             score *= 1.3
 
-        crawled_at = page.get("crawled_at", "")
+        crawled_at = document.get("crawled_at", "")
         if crawled_at:
             try:
                 crawled = datetime.fromisoformat(crawled_at.replace("Z", "+00:00"))
@@ -252,7 +252,7 @@ class SearchEngine:
             except Exception:
                 pass
 
-        word_count = page.get("word_count", 0)
+        word_count = document.get("word_count", 0)
         if word_count < 50:
             score *= 0.7
         elif word_count > 10000:
