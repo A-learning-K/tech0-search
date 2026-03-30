@@ -3,7 +3,7 @@
 .DS_Store
 
 # データベース
-data/
+data/*.db
 *.db
 
 # 環境変数
