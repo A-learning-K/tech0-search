@@ -39,7 +39,7 @@ def init_db():
 
 
 def insert_document(document: dict) -> int:    #pageをdocumentに変更
-     """
+    """
     ドキュメント情報を DB に登録する。
 
     INSERT OR REPLACE：同じ URL のデータがあれば上書き、なければ新規追加する。
