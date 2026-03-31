@@ -117,7 +117,7 @@ def manual_search(query: str, pages: list, top_n: int = 20) -> list:
 
         text = " ".join([
             (p.get("title", "") + " ") * 3,
-            (p.get("description", "") + " ") * 2,
+            (p.get("department", "") + " ") * 2,
             (p.get("full_text", "") + " "),
             (" ".join(kw_list) + " ") * 2,
         ])
@@ -189,7 +189,7 @@ class SearchEngine:
 
             text = " ".join([
                 (p.get("title", "") + " ") * 3,
-                (p.get("description", "") + " ") * 2,
+                (p.get("department", "") + " ") * 2,
                 (p.get("full_text", "") + " "),
                 (" ".join(kw_list) + " ") * 2,
             ])
@@ -241,11 +241,11 @@ class SearchEngine:
         if query_lower in keywords_lower:
             score *= 1.3
 
-        crawled_at = page.get("crawled_at", "")
-        if crawled_at:
+        timestamp = page.get("updated_at") or page.get("created_at") or ""
+        if timestamp:
             try:
-                crawled = datetime.fromisoformat(crawled_at.replace("Z", "+00:00"))
-                days_old = (datetime.now() - crawled.replace(tzinfo=None)).days
+                dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                days_old = (datetime.now() - dt.replace(tzinfo=None)).days
                 if days_old <= 90:
                     recency_bonus = 1 + (0.2 * (90 - days_old) / 90)
                     score *= recency_bonus
