@@ -97,28 +97,28 @@ def cosine_sim_dict(vec1: dict, vec2: dict) -> float:
     return dot / (norm1 * norm2)
 
 
-def manual_search(query: str, documents: list, top_n: int = 20) -> list:
+def manual_search(query: str, pages: list, top_n: int = 20) -> list:
     """
     手実装版の簡易検索
     calc_tf / calc_idf を使って TF-IDF を作り、
     コサイン類似度で検索する
     """
-    if not query.strip() or not documents:
+    if not query.strip() or not pages:
         return []
 
-    # 各文書から検索対象テキストを作る
+    # 各ページから検索対象テキストを作る
     docs = []
-    for document in documents:
-        kw = document.get("keywords", "") or ""
+    for p in pages:
+        kw = p.get("keywords", "") or ""
         if isinstance(kw, str):
             kw_list = [k.strip() for k in kw.split(",") if k.strip()]
         else:
             kw_list = kw
 
         text = " ".join([
-            (document.get("title", "") + " ") * 3,
-            (document.get("department", "") + " ") * 2,
-            (document.get("content", "") + " "),
+            (p.get("title", "") + " ") * 3,
+            (p.get("department", "") + " ") * 2,
+            (p.get("full_text", "") + " "),
             (" ".join(kw_list) + " ") * 2,
         ])
         docs.append(text)
@@ -136,15 +136,15 @@ def manual_search(query: str, documents: list, top_n: int = 20) -> list:
 
     results = []
     for idx, tokens in enumerate(docs_tokens):
-        document_tf = calc_tf(tokens)
-        document_tfidf = calc_tfidf(document_tf, idf)
+        page_tf = calc_tf(tokens)
+        page_tfidf = calc_tfidf(page_tf, idf)
 
-        score = cosine_sim_dict(query_tfidf, document_tfidf)
+        score = cosine_sim_dict(query_tfidf, page_tfidf)
 
         if score > 0.01:
-            document = documents[idx].copy()
-            document["relevance_score"] = round(score * 100, 1)
-            results.append(document)
+            page = pages[idx].copy()
+            page["relevance_score"] = round(score * 100, 1)
+            results.append(page)
 
     results.sort(key=lambda x: x["relevance_score"], reverse=True)
     return results[:top_n]
@@ -167,30 +167,30 @@ class SearchEngine:
             sublinear_tf=True
         )
         self.tfidf_matrix = None
-        self.documents = []
+        self.pages = []
         self.is_fitted = False
 
-    def build_index(self, documents: list):
+    def build_index(self, pages: list):
         """
-        全文書の TF-IDF インデックスを構築する
+        全ページの TF-IDF インデックスを構築する
         """
-        if not documents:
+        if not pages:
             return
 
-        self.documents = documents
+        self.pages = pages
 
         corpus = []
-        for document in documents:
-            kw = document.get("keywords", "") or ""
+        for p in pages:
+            kw = p.get("keywords", "") or ""
             if isinstance(kw, str):
                 kw_list = [k.strip() for k in kw.split(",") if k.strip()]
             else:
                 kw_list = kw
 
             text = " ".join([
-                (document.get("title", "") + " ") * 3,
-                (document.get("department", "") + " ") * 2,
-                (document.get("content", "") + " "),
+                (p.get("title", "") + " ") * 3,
+                (p.get("department", "") + " ") * 2,
+                (p.get("full_text", "") + " "),
                 (" ".join(kw_list) + " ") * 2,
             ])
             corpus.append(text)
@@ -211,37 +211,37 @@ class SearchEngine:
         results = []
         for idx, base_score in enumerate(similarities):
             if base_score > 0.01:
-                document = self.documents[idx].copy()
-                final_score = self._calculate_final_score(document, base_score, query)
+                page = self.pages[idx].copy()
+                final_score = self._calculate_final_score(page, base_score, query)
 
-                document["relevance_score"] = round(float(final_score) * 100, 1)
-                document["base_score"] = round(float(base_score) * 100, 1)
-                results.append(document)
+                page["relevance_score"] = round(float(final_score) * 100, 1)
+                page["base_score"] = round(float(base_score) * 100, 1)
+                results.append(page)
 
         results.sort(key=lambda x: x["relevance_score"], reverse=True)
         return results[:top_n]
 
-    def _calculate_final_score(self, document: dict, base_score: float, query: str) -> float:
+    def _calculate_final_score(self, page: dict, base_score: float, query: str) -> float:
         """
         複数の要素を組み合わせて最終スコアを計算する
         """
         score = base_score
         query_lower = query.lower()
 
-        title = document.get("title", "").lower()
+        title = page.get("title", "").lower()
         if query_lower == title:
             score *= 1.8
         elif query_lower in title:
             score *= 1.4
 
-        keywords = document.get("keywords", [])
+        keywords = page.get("keywords", [])
         if isinstance(keywords, str):
             keywords = keywords.split(",")
         keywords_lower = [k.strip().lower() for k in keywords]
         if query_lower in keywords_lower:
             score *= 1.3
 
-        timestamp = document.get("updated_at") or document.get("created_at") or ""
+        timestamp = page.get("updated_at") or page.get("created_at") or ""
         if timestamp:
             try:
                 dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
@@ -252,7 +252,7 @@ class SearchEngine:
             except Exception:
                 pass
 
-        word_count = document.get("word_count", 0)
+        word_count = page.get("word_count", 0)
         if word_count < 50:
             score *= 0.7
         elif word_count > 10000:
@@ -274,7 +274,7 @@ def get_engine() -> SearchEngine:
     return _engine
 
 
-def rebuild_index(documents: List[dict]):
+def rebuild_index(pages: List[dict]):
     """インデックスを再構築する"""
     engine = get_engine()
-    engine.build_index(documents)
+    engine.build_index(pages)
