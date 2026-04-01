@@ -46,3 +46,25 @@ CREATE INDEX IF NOT EXISTS idx_keyword    ON keywords(keyword);
 CREATE INDEX IF NOT EXISTS idx_document_id    ON keywords(document_id);   -- page_id→document_id に変更
 CREATE INDEX IF NOT EXISTS idx_search_query ON search_logs(query);
 CREATE INDEX IF NOT EXISTS idx_search_date  ON search_logs(searched_at);
+
+
+-- postsテーブル
+CREATE TABLE IF NOT EXISTS posts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    text        TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    anonymous INTEGER NOT NULL,
+    posted_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- likesテーブル
+CREATE TABLE IF NOT EXISTS likes (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id     INTEGER NOT NULL,  
+    liked_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id)
+    ON DELETE CASCADE  -- 親が消えたら子も削除
+    ON UPDATE CASCADE  -- 親が更新されたら子も更新
+);
+
+

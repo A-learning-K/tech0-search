@@ -5,9 +5,12 @@ Streamlit アプリ本体。検索・クローラー・一覧の3タブ構成。
 
 import re
 import streamlit as st
-from database import init_db, get_all_pages, insert_page, log_search
+from database import init_db, get_all_documents, insert_document, insert_post, get_all_posts, add_like, get_like_count, get_hot_posts
 from ranking import get_engine, rebuild_index
 from crawler import crawl_url
+
+# ── 定数 ──────────────────────────────────────────────────────
+OYOBIDASHI_THRESHOLD = 3  # お呼び出し閾値（デモ用に低め設定。本番は100）
 
 # アプリ起動時に DB を初期化する（テーブルが未作成なら作る）
 init_db()
@@ -106,14 +109,16 @@ footer, #MainMenu { display: none; }
 """, unsafe_allow_html=True)
 
 
-
+# ── セッションステートの初期化 ────────────────────────────────
+if "oyobidashi_flags" not in st.session_state:
+    st.session_state["oyobidashi_flags"] = {}
 
 # ── キャッシュ付きインデックス構築 ─────────────────────────────
 @st.cache_resource
 def load_and_index():
     """全ページを DB から読み込み TF-IDF インデックスを構築する。
     @st.cache_resource により、アプリ起動中は一度だけ実行される。"""
-    pages = get_all_pages()
+    pages = get_all_documents()
     if pages:
         rebuild_index(pages)
     return pages
@@ -133,8 +138,8 @@ with st.sidebar:
         st.rerun()
 
 # ── タブ ──────────────────────────────────────────────────────
-tab_search, tab_crawl, tab_list = st.tabs(
-    ["🔍 検索", "🤖 クローラー", "📋 一覧"]
+tab_search, tab_crawl, tab_list, tab_post, tab_hot = st.tabs(
+    ["🔍 検索", "🤖 クローラー", "📋 一覧", "💡 投稿", "🔥 Hot"]
 )
 
 # ── 検索タブ ───────────────────────────────────────────────────
@@ -150,7 +155,6 @@ with tab_search:
 
     if query:
         results = engine.search(query, top_n=top_n)
-        log_search(query, len(results))    # 検索するたびに自動記録（Step7で実装予定）
 
         st.markdown(f"**📊 検索結果：{len(results)} 件**（TF-IDFスコア順）")
         st.divider()
@@ -246,7 +250,7 @@ with tab_crawl:
 
             for i, r in enumerate(st.session_state.crawl_results, start=1):
                 progress_text.write(f"📥 {i} / {total} 件登録中...")
-                insert_page(r)
+                insert_document(r)
                 progress_bar.progress(i / total)
 
             progress_text.write(f"✅ {total} / {total} 件 登録完了！")
@@ -269,6 +273,149 @@ with tab_list:
                 with col1: st.caption(f"語数：{page.get('word_count', 0)}")
                 with col2: st.caption(f"作成者：{page.get('author', '不明') or '不明'}")
                 with col3: st.caption(f"カテゴリ：{page.get('category', '未分類') or '未分類'}")
+
+with tab_post:
+
+    # ── お呼び出し通知（フラグが立っていたら一番上に表示） ────
+    for post_id, flagged in list(st.session_state["oyobidashi_flags"].items()):
+        if not flagged:
+            continue
+
+        all_posts_for_flag = get_all_posts()
+        target_post = None
+        for p in all_posts_for_flag:
+            if p["id"] == post_id:
+                target_post = p
+                break
+
+        if target_post is None:
+            continue
+
+        with st.container(border=True):
+            st.markdown("##### 📣 黒崎からのお呼び出し")
+            st.caption("黒崎 厳　執行役員 / 経営企画担当")
+            st.write("あなたの提案に注目しています。")
+            st.write("詳しくお話を聞かせてください。")
+            st.write("下記の日時に私の部屋までお越しください。")
+
+            with st.container(border=True):
+                st.write("🗓　12月5日（木）14:00")
+                st.caption("黒崎執行役員室（本館5F）")
+
+            with st.container(border=True):
+                st.caption("対象スレッド")
+                st.write(target_post["text"][:40] + "…")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("後で確認する", key=f"later_{post_id}"):
+                    st.session_state["oyobidashi_flags"][post_id] = False
+                    st.rerun()
+            with col2:
+                if st.button("承知しました ✓", key=f"accept_{post_id}"):
+                    st.session_state["oyobidashi_flags"][post_id] = False
+                    st.success("承知しました！当日お伺いします。")
+                    st.rerun()
+
+    st.divider()
+
+    # ── 投稿フォーム ──────────────────────────────────────────
+    with st.form("post_form", clear_on_submit=True):
+        text   = st.text_area("投稿", placeholder="アイデアを書いてみよう")
+        # デモではユーザー名を識別できないので、黒崎で統一する
+        post_name = "黒崎 厳"
+        anonymous = st.checkbox("匿名で投稿する")
+        submitted = st.form_submit_button("投稿する")
+
+        if submitted:
+            if not text.strip():
+                st.warning("投稿を入力してください")
+            else:
+                insert_post(text, post_name, anonymous)
+                st.success("投稿しました")
+                st.rerun()
+
+    st.divider()
+
+    # ── 投稿一覧 ──────────────────────────────────────────────
+    # DBから全投稿を取得して表示する
+    all_posts = get_all_posts()
+    st.subheader(f"📋 投稿一覧（{len(all_posts)} 件）")
+
+    if not all_posts:
+        st.info("まだ投稿がありません。")
+    else:
+        for post in all_posts:
+            # 匿名フラグが1（True）なら名前を隠す
+            if post["anonymous"] == 1:
+                display_name = "匿名"
+            else:
+                display_name = post["name"]
+
+            st.markdown(f"**{display_name}**　{post['posted_at'][:10]}")
+            st.markdown(f"> {post['text']}")
+
+            # いいね数を取得して表示する
+            like_count = get_like_count(post["id"])
+            st.caption(f"⭐ いいね {like_count} 件")
+            st.divider()
+
+# ============================================================
+# 🔥 Hotタブ
+# ============================================================
+with tab_hot:
+    st.subheader("🔥 今話題の投稿")
+
+    # いいね数の多い順に並び替えて上位10件を取得する
+    hot_posts = get_hot_posts()
+
+    if not hot_posts:
+        st.info("投稿はありません。最初のアイデアを投稿してみましょう💡")
+    else:
+        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
+
+        for rank, post in enumerate(hot_posts, start=1):
+            if post["anonymous"]:
+                name = "匿名ユーザー"
+            else:
+                name = post["name"]
+
+            medal = medals[rank] if rank in medals else f"#{rank}"
+
+            with st.container(border=True):
+                col_rank, col_body, col_like = st.columns([0.5, 5, 1])
+
+                with col_rank:
+                    st.markdown(f"### {medal}")
+
+                with col_body:
+                    # 先頭40文字をタイトル代わりにして、クリックで本文を展開する
+                    preview = post["text"][:40] + "…" if len(post["text"]) > 40 else post["text"]
+                    with st.expander(preview):
+                        st.caption(f"{name}")
+                        st.write(post["text"])
+
+                with col_like:
+                    like_count = get_like_count(post["id"])
+                    st.metric("❤️", like_count)
+
+                # いいねボタンが押された場合の挙動
+                # key：どの投稿のいいねボタンかを特定する
+                if st.button("👍 いいね", key=f"like_btn_{post['id']}"):
+                    add_like(post["id"])
+                    st.rerun()
+
+                # お呼び出しボタン（閾値を超えた投稿にだけ表示）
+                like_count = get_like_count(post["id"])
+                already_sent = st.session_state["oyobidashi_flags"].get(post["id"], False)
+                if like_count >= OYOBIDASHI_THRESHOLD:
+                    if already_sent:
+                        st.success("📣 お呼び出し済み")
+                    else:
+                        if st.button("📣 お呼び出しを送る", key=f"oyobidashi_btn_{post['id']}"):
+                            st.session_state["oyobidashi_flags"][post["id"]] = True
+                            st.toast("お呼び出しを送りました", icon="📣")
+                            st.rerun()
 
 st.divider()
 st.caption("© 2025 PROJECT ZERO — Tech0 Search v1.0 | Powered by TF-IDF")
