@@ -18,29 +18,40 @@ def load_documents():
     """
     # ①JSONファイルを読み込む
     # ↓ここに埋める（下のload_posts()を参考に記載してみてください）
-    
-    
+    with open("data/techzeron_documents_final.json", "r", encoding="utf-8") as f:
+         documents = json.load(f) 
 
     conn = get_connection()
     cursor = conn.cursor()
 
     # ②既存データを全件削除してから投入する
-    # cursor.execute("   ")  ← SQL文を中に記載する 
-    conn.commit()
-    conn.close()
+    # cursor.execute("")  ← SQL文を中に記載する 
+    cursor.execute("DELETE FROM documents") # documentsテーブルのデータを全件削除するSQL文
+    conn.commit() 
+    conn.close()  #接続を閉じる（この後 insert_document() 内で再度接続するため）
 
     # 1件ずつドキュメントを投入する
     count = 0
-    for doc in documents:
+    for doc in documents:  
         # insert_document() を呼ぶ
-        # JSONのキー名とDBのカラム名が違う箇所があるので注意
+        # JSONのキー名とDBのカラム名が違う箇所があるので注意←（Q)確かにそうです、なぜ？
         #         tags（JSON） → keywords（DB）
         #         content（JSON） → full_text（DB）
         # ③↓ここを埋める（insert_document に渡す辞書を作って呼び出す）
-            
-            
-            pass  # この行を削除して実装する
-            count += 1
+        doc_data = {
+            'title': doc['title'],
+            'department': doc['department'],
+            'author': doc['author'],
+            'category': doc['category'],
+            'keywords': doc['tags'],        # tags を keywords に変換
+            'created_at': doc['created_at'],
+            'updated_at': doc['updated_at'],
+            'word_count': doc['word_count'],
+            'full_text': doc['content']      # content を full_text に変換
+        }  
+
+        insert_document(doc_data)
+        count += 1
 
     print(f"✅ documents投入完了：{count}件")
 
