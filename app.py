@@ -41,12 +41,12 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stAppViewContainer"] {
-    background: #fdfaf6 !important;
-    overflow: visible !important;
+  background: #fdfaf6 !important;
+  /* overflow: visible を削除 */
 }
 [data-testid="stMain"] {
-    background: #fdfaf6 !important;
-    overflow: visible !important;
+  background: #fdfaf6 !important;
+  /* overflow: visible を削除 */
 }
                  
 /* ── サイドバー ── */
