@@ -5,7 +5,7 @@ Streamlit アプリ本体。検索・クローラー・一覧の3タブ構成。
 
 import re
 import streamlit as st
-from database import init_db, get_all_documents, insert_document, insert_post, get_all_posts, add_like, get_like_count, get_hot_posts
+from database import init_db, get_all_documents, insert_document, insert_post, get_all_posts, add_like, get_like_count, get_hot_posts, add_comment, get_comments
 from ranking import get_engine, rebuild_index
 from crawler import crawl_url
 from streamlit_option_menu import option_menu
@@ -218,50 +218,21 @@ with st.sidebar:
     if not hot_posts:
         st.info("投稿はありません。最初のアイデアを投稿してみましょう💡")
     else:
-        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
-
-        for rank, post in enumerate(hot_posts, start=1):
-            if post["anonymous"]:
-                name = "匿名ユーザー"
-            else:
-                name = post["name"]
-
-            medal = medals[rank] if rank in medals else f"#{rank}"
+        
+        for post in hot_posts[:3]:
+            like_count = get_like_count(post["id"])
+            # top_levelの件数＋全repliesの件数を合計する
+            comments_data = get_comments(post["id"])
+            comment_count = sum(1 + len(c["replies"]) for c in comments_data)
 
             with st.container(border=True):
-                col_rank, col_body, col_like = st.columns([0.5, 5, 1])
-
-                with col_rank:
-                    st.markdown(f"### {medal}")
-
-                with col_body:
-                    # 先頭40文字をタイトル代わりにして、クリックで本文を展開する
-                    preview = post["text"][:40] + "…" if len(post["text"]) > 40 else post["text"]
-                    with st.expander(preview):
-                        st.caption(f"{name}")
-                        st.write(post["text"])
-
+                preview = post["text"][:20] + "…" if len(post["text"]) > 20 else post["text"]
+                st.caption(preview)
+                col_like, col_comment = st.columns(2)
                 with col_like:
-                    like_count = get_like_count(post["id"])
-                    st.metric("❤️", like_count)
-
-                # いいねボタンが押された場合の挙動
-                # key：どの投稿のいいねボタンかを特定する
-                if st.button("👍 いいね", key=f"like_btn_{post['id']}"):
-                    add_like(post["id"])
-                    st.rerun()
-
-                # お呼び出しボタン（閾値を超えた投稿にだけ表示）
-                like_count = get_like_count(post["id"])
-                already_sent = st.session_state["oyobidashi_flags"].get(post["id"], False)
-                if like_count >= OYOBIDASHI_THRESHOLD:
-                    if already_sent:
-                        st.success("📣 お呼び出し済み")
-                    else:
-                        if st.button("📣 お呼び出しを送る", key=f"oyobidashi_btn_{post['id']}"):
-                            st.session_state["oyobidashi_flags"][post["id"]] = True
-                            st.toast("お呼び出しを送りました", icon="📣")
-                            st.rerun()
+                    st.caption(f"👍 {like_count}")
+                with col_comment:
+                    st.caption(f"💬 {comment_count}")
 
 
 # ── 検索ページ ───────────────────────────────────────────────────
@@ -371,17 +342,18 @@ elif selected == "💡 投稿":
 
     # ── 投稿フォーム ──────────────────────────────────────────
     with st.form("post_form", clear_on_submit=True):
-        text   = st.text_area("投稿", placeholder="アイデアを書いてみよう")
-        # デモではユーザー名を識別できないので、黒崎で統一する
+        title    = st.text_input("タイトル", placeholder="投稿のタイトルを入力")  # ← 追加
+        category = st.selectbox("カテゴリ", ["アイデア", "提案", "質問"])          # ← 追加
+        text     = st.text_area("投稿", placeholder="アイデアを書いてみよう")
         post_name = "黒崎 厳"
         anonymous = st.checkbox("匿名で投稿する")
-        submitted = st.form_submit_button("投稿する",type="primary")
+        submitted = st.form_submit_button("投稿する", type="primary")
 
         if submitted:
             if not text.strip():
                 st.warning("投稿を入力してください")
             else:
-                insert_post(text, post_name, anonymous)
+                insert_post(title, category, text, post_name, anonymous)
                 st.success("投稿しました")
                 st.rerun()
 
@@ -396,19 +368,73 @@ elif selected == "💡 投稿":
         st.info("まだ投稿がありません。")
     else:
         for post in all_posts:
-            # 匿名フラグが1（True）なら名前を隠す
             if post["anonymous"] == 1:
                 display_name = "匿名"
             else:
                 display_name = post["name"]
 
-            st.markdown(f"**{display_name}**　{post['posted_at'][:10]}")
-            st.markdown(f"> {post['text']}")
+            with st.container(border=True):
+                st.markdown(f"**{post['title']}**　`{post['category']}`")  # ← 追加
+                st.markdown(f"**{display_name}**　{post['posted_at'][:10]}")
+                st.markdown(f"> {post['text']}")
 
-            # いいね数を取得して表示する
-            like_count = get_like_count(post["id"])
-            st.caption(f"⭐ いいね {like_count} 件")
-            st.divider()
+                # いいね・お呼び出しボタン
+                like_count = get_like_count(post["id"])
+                col_like, col_oyobi = st.columns([1, 2])
+                with col_like:
+                    if st.button(f"👍 いいね {like_count}", key=f"like_btn_{post['id']}"):
+                        add_like(post["id"])
+                        st.rerun()
+                with col_oyobi:
+                    already_sent = st.session_state["oyobidashi_flags"].get(post["id"], False)
+                    if like_count >= OYOBIDASHI_THRESHOLD:
+                        if already_sent:
+                            st.success("📣 お呼び出し済み")
+                        else:
+                            if st.button("📣 お呼び出しを送る", key=f"oyobidashi_btn_{post['id']}"):
+                                st.session_state["oyobidashi_flags"][post["id"]] = True
+                                st.toast("お呼び出しを送りました", icon="📣")
+                                st.rerun()
+
+                # コメント一覧と入力欄
+                comments = get_comments(post["id"])
+                total_comments = sum(1 + len(c["replies"]) for c in comments)
+                with st.expander(f"💬 返信 {total_comments} 件"):
+                    for c in comments:
+                        st.markdown(f"**{c['name']}**：{c['body']}")
+                        st.caption(c["posted_at"][:10])
+
+                        # 返信コメントをインデントして表示する
+                        for reply in c["replies"]:
+                            with st.container():
+                                st.markdown(f"　↳ **{reply['name']}**：{reply['body']}")
+                                st.caption(f"　　{reply['posted_at'][:10]}")
+
+                        # 返信ボタン
+                        if st.button("返信する", key=f"reply_btn_{c['id']}"):
+                            st.session_state[f"reply_to_{c['id']}"] = True
+
+                        # 返信入力欄（返信ボタンを押したときだけ表示）
+                        if st.session_state.get(f"reply_to_{c['id']}"):
+                            reply_body = st.text_input("返信を入力", key=f"reply_body_{c['id']}")
+                            reply_name = st.text_input("名前", key=f"reply_name_{c['id']}")
+                            if st.button("送信", key=f"reply_submit_{c['id']}"):
+                                if reply_body and reply_name:
+                                    add_comment(post["id"], reply_body, reply_name, parent_id=c["id"])
+                                    st.session_state[f"reply_to_{c['id']}"] = False
+                                    st.rerun()
+                                else:
+                                    st.warning("返信内容と名前を入力してください。")
+
+                    st.divider()
+                    comment_body = st.text_input("コメントを入力", key=f"comment_body_{post['id']}")
+                    comment_name = st.text_input("コメント者名", key=f"comment_name_{post['id']}")
+                    if st.button("返信する", key=f"comment_btn_{post['id']}"):
+                        if comment_body and comment_name:
+                            add_comment(post["id"], comment_body, comment_name)
+                            st.rerun()
+                        else:
+                            st.warning("コメント内容と名前を入力してください。")
 
 
 # ── クローラーページ ─────────────────────────────────────────────

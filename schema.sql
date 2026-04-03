@@ -51,12 +51,13 @@ CREATE INDEX IF NOT EXISTS idx_search_date  ON search_logs(searched_at);
 -- postsテーブル
 CREATE TABLE IF NOT EXISTS posts (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    category    TEXT NOT NULL,
     text        TEXT NOT NULL,
-    name       TEXT NOT NULL,
-    anonymous INTEGER NOT NULL,
-    posted_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    name        TEXT NOT NULL,
+    anonymous   INTEGER NOT NULL,
+    posted_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 -- likesテーブル
 CREATE TABLE IF NOT EXISTS likes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,4 +68,14 @@ CREATE TABLE IF NOT EXISTS likes (
     ON UPDATE CASCADE  -- 親が更新されたら子も更新
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id    INTEGER NOT NULL,
+    parent_id  INTEGER DEFAULT NULL,
+    body       TEXT    NOT NULL,
+    name       TEXT    NOT NULL,
+    posted_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE
+);
 
