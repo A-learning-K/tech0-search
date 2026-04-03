@@ -184,7 +184,7 @@ st.markdown("""
 with st.sidebar:
     selected = option_menu(
         menu_title=None,
-        options=["🔍 検索", "💡 投稿", "🤖 クローラー", "一覧"],
+        options=["🔍 社内情報検索", "💡 投稿", "🤖 クローラー", "📋 社外情報一覧"],
         icons=["search", "chat-square-text", "database-add", "card-list"],
         menu_icon="cast",
         default_index=0,
@@ -236,8 +236,8 @@ with st.sidebar:
 
 
 # ── 検索ページ ───────────────────────────────────────────────────
-if selected == "🔍 検索":
-    st.subheader("🔍 検索")
+if selected == "🔍 社内情報検索":
+    st.subheader("🔍 社内情報検索")
     st.write("社内情報を横断的に検索できます")
 
     col_search, col_options = st.columns([3, 1])
@@ -283,9 +283,8 @@ if selected == "🔍 検索":
                     with col1: st.caption(f"👤 {page.get('author', '不明') or '不明'}")
                     with col2: st.caption(f"📊 {page.get('word_count', 0)} 語")
                     with col3: st.caption(f"📁 {page.get('category', '未分類') or '未分類'}")
-                    with col4: st.caption(f"📅 {(page.get('crawled_at', '') or '')[:10]}")
+                    with col4: st.caption(f"📅 {(page.get('updated_at', '') or '')[:10]}")
 
-                    st.markdown(f"🔗 [{page['url']}]({page['url']})")
                     st.divider()
         else:
             st.info("該当するページが見つかりませんでした")
@@ -506,11 +505,10 @@ elif selected == "🤖 クローラー":
 #             st.rerun()
 
 # ── 一覧ページ ───────────────────────────────────────────────────
-elif selected == "📋 一覧":
-    st.subheader("📋 一覧")
+elif selected == "📋 社外情報一覧":
+    st.subheader("📋 社外情報一覧")
     st.info("🚧 準備中です。しばらくお待ちください。")
-
-# elif selected == "📋 一覧":
+# elif selected == "📋 社外情報一覧":
 #     st.subheader(f"📋 登録済みページ一覧（{len(pages)} 件）")
 #     if not pages:
 #         st.info("登録されているページがありません。クローラータブからページを追加してください。")
