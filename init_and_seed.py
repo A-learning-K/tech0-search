@@ -62,14 +62,16 @@ def load_posts():
     count_posts = 0
     for post in data["posts"]:
         cursor.execute("""
-            INSERT INTO posts (text, name, anonymous, posted_at)
-            VALUES (?, ?, ?, ?)
-        """, (
-            post["text"],
-            post["name"],
-            post["anonymous"],  # JSONが0/1なのでそのまま使う
-            post["posted_at"],
-        ))
+            INSERT INTO posts (title, category, text, name, anonymous, posted_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                post["title"],
+                post["category"],
+                post["text"],
+                post["name"],
+                post["anonymous"],
+                post["posted_at"],
+            ))        
         count_posts += 1
 
     conn.commit()

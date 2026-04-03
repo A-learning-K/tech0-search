@@ -88,7 +88,7 @@ def get_all_documents() -> list:
 
 
 
-def insert_post(text: str, name: str, anonymous: bool) -> int:
+def insert_post(title: str, category: str, text: str, name: str, anonymous: bool) -> int:    
     """
     投稿を DB に登録する。
 
@@ -109,11 +109,11 @@ def insert_post(text: str, name: str, anonymous: bool) -> int:
     else:
         anonymous_int = 0
 
-    cursor.execute("""  
+    cursor.execute("""
         INSERT INTO posts
-            (text, name, anonymous)
-        VALUES (?, ?, ?)
-    """, (text, name, anonymous_int))
+            (title, category, text, name, anonymous)
+        VALUES (?, ?, ?, ?, ?)
+    """, (title, category, text, name, anonymous_int))
 
     post_id = cursor.lastrowid    # 登録された行の id を取得できる
     conn.commit()
@@ -190,6 +190,8 @@ def get_hot_posts() -> list:
     cursor.execute("""
         SELECT
             posts.id,
+            posts.title,
+            posts.category,
             posts.text,
             posts.name,
             posts.anonymous,
@@ -208,3 +210,46 @@ def get_hot_posts() -> list:
     for row in rows:
         result.append(dict(row))
     return result
+
+def add_comment(post_id: int, body: str, name: str, parent_id: int = None) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO comments (post_id, parent_id, body, name)
+        VALUES (?, ?, ?, ?)
+    """, (post_id, parent_id, body, name))
+    comment_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return comment_id
+
+def get_comments(post_id: int) -> list:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM comments
+        WHERE post_id = ?
+        ORDER BY posted_at ASC
+    """, (post_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    # parent_id=NULLの最上位コメントに、子コメントをrepliesとして格納する
+    top_level = []
+    replies = {}
+    for row in rows:
+        comment = dict(row)
+        if comment["parent_id"] is None:
+            comment["replies"] = []
+            top_level.append(comment)
+        else:
+            pid = comment["parent_id"]
+            if pid not in replies:
+                replies[pid] = []
+            replies[pid].append(comment)
+
+    # 返信を親コメントのrepliesにセットする
+    for comment in top_level:
+        comment["replies"] = replies.get(comment["id"], [])
+
+    return top_level
