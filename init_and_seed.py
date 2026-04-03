@@ -46,7 +46,7 @@ def load_documents():
             'keywords': doc['tags'],        # tags を keywords に変換
             'created_at': doc['created_at'],
             'updated_at': doc['updated_at'],
-            'word_count': doc['word_count'],
+            'word_count': len(doc.get('content', '')),  # 文字数で代用（日本語対応）
             'full_text': doc['content']      # content を full_text に変換
         }  
 
