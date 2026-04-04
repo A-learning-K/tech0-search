@@ -62,12 +62,11 @@ def insert_document(document: dict) -> int:    #pageをdocumentに変更
     """, (
         document["title"],              #pageからdocumentに変更
         document.get("department", ""), #pageからdocumentに変更
-        document.get("full_text", ""),  #pageからdocumentに変更
-        document.get("author", ""),     #pageからdocumentに変更
-        document.get("category", ""),   #pageからdocumentに変更
-        document.get("word_count", 0),  #pageからdocumentに変更
-        document.get("keywords", "")    #pageからdocumentに変更
-        
+        document.get("author", ""),      # ← authorを3番目に
+        document.get("category", ""),    # ← categoryを4番目に
+        document.get("keywords", ""),    # ← keywordsを5番目に
+        document.get("full_text", ""),   # ← full_textを6番目に
+        document.get("word_count", 0),   # ← word_countを7番目に        
     ))
 
     document_id = cursor.lastrowid    # 登録された行の id を取得する #pageからdocumentに変更

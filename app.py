@@ -184,7 +184,7 @@ st.markdown("""
 with st.sidebar:
     selected = option_menu(
         menu_title=None,
-        options=["🔍 検索", "💡 投稿", "🤖 クローラー", "一覧"],
+        options=["🔍 社内情報検索", "💡 投稿", "🤖 クローラー", "📋 社外情報一覧"],
         icons=["search", "chat-square-text", "database-add", "card-list"],
         menu_icon="cast",
         default_index=0,
@@ -236,8 +236,8 @@ with st.sidebar:
 
 
 # ── 検索ページ ───────────────────────────────────────────────────
-if selected == "🔍 検索":
-    st.subheader("🔍 検索")
+if selected == "🔍 社内情報検索":
+    st.subheader("🔍 社内情報検索")
     st.write("社内情報を横断的に検索できます")
 
     col_search, col_options = st.columns([3, 1])
@@ -283,9 +283,8 @@ if selected == "🔍 検索":
                     with col1: st.caption(f"👤 {page.get('author', '不明') or '不明'}")
                     with col2: st.caption(f"📊 {page.get('word_count', 0)} 語")
                     with col3: st.caption(f"📁 {page.get('category', '未分類') or '未分類'}")
-                    with col4: st.caption(f"📅 {(page.get('crawled_at', '') or '')[:10]}")
+                    with col4: st.caption(f"📅 {(page.get('updated_at', '') or '')[:10]}")
 
-                    st.markdown(f"🔗 [{page['url']}]({page['url']})")
                     st.divider()
         else:
             st.info("該当するページが見つかりませんでした")
@@ -438,83 +437,90 @@ elif selected == "💡 投稿":
 
 
 # ── クローラーページ ─────────────────────────────────────────────
-if "crawl_results" not in st.session_state:
-    st.session_state.crawl_results = []
-
 elif selected == "🤖 クローラー":
     st.subheader("🤖 自動クローラー")
-    st.caption("URLを入力してクロールし、インデックスに登録する")
+    st.info("🚧 準備中です。しばらくお待ちください。")
 
-    crawl_url_input = st.text_area(
-        "クロール対象URL",
-        placeholder="URLを改行またはスペース区切りで入力してください",
-        height=150
-    )
+# if "crawl_results" not in st.session_state:
+#     st.session_state.crawl_results = []
 
-    if st.button("🤖 クロール実行", type="primary"):
-        if crawl_url_input:
-            raw_parts = re.split(r'[\s]+', crawl_url_input.strip())
-            urls = [p for p in raw_parts if p.startswith(("http://", "https://"))]
+# elif selected == "🤖 クローラー":
+#     st.subheader("🤖 自動クローラー")
+#     st.caption("URLを入力してクロールし、インデックスに登録する")
 
-            if not urls:
-                st.error("有効なURLが見つかりませんでした")
-            else:
-                st.write(f"🔗 {len(urls)}件のURLを処理します")
+#     crawl_url_input = st.text_area(
+#         "クロール対象URL",
+#         placeholder="URLを改行またはスペース区切りで入力してください",
+#         height=150
+#     )
 
-                st.session_state.crawl_results = []
+#     if st.button("🤖 クロール実行", type="primary"):
+#         if crawl_url_input:
+#             raw_parts = re.split(r'[\s]+', crawl_url_input.strip())
+#             urls = [p for p in raw_parts if p.startswith(("http://", "https://"))]
 
-                for url in urls:
-                    with st.spinner(f"クロール中: {url}"):
-                        result = crawl_url(url)
+#             if not urls:
+#                 st.error("有効なURLが見つかりませんでした")
+#             else:
+#                 st.write(f"🔗 {len(urls)}件のURLを処理します")
 
-                    if result and result.get('crawl_status') == 'success':
-                        st.success(f"✅ 成功: {url}")
+#                 st.session_state.crawl_results = []
 
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            title = result.get('title', '')
-                            st.metric("📄 タイトル", (title[:30] + "...") if len(title) > 30 else title)
-                        with col2:
-                            st.metric("📊 文字数", f"{result.get('word_count', 0)}語")
+#                 for url in urls:
+#                     with st.spinner(f"クロール中: {url}"):
+#                         result = crawl_url(url)
 
-                        st.session_state.crawl_results.append(result)
-                    else:
-                        st.error(f"❌ 失敗: {url}")
+#                     if result and result.get('crawl_status') == 'success':
+#                         st.success(f"✅ 成功: {url}")
 
-    if st.session_state.crawl_results:
-        st.info(f"{len(st.session_state.crawl_results)}件のクロール結果を登録できます。")
+#                         col1, col2 = st.columns(2)
+#                         with col1:
+#                             title = result.get('title', '')
+#                             st.metric("📄 タイトル", (title[:30] + "...") if len(title) > 30 else title)
+#                         with col2:
+#                             st.metric("📊 文字数", f"{result.get('word_count', 0)}語")
 
-        if st.button("💾 全てインデックスに登録"):
-            total = len(st.session_state.crawl_results)
+#                         st.session_state.crawl_results.append(result)
+#                     else:
+#                         st.error(f"❌ 失敗: {url}")
 
-            progress_text = st.empty()
-            progress_bar = st.progress(0)
+#     if st.session_state.crawl_results:
+#         st.info(f"{len(st.session_state.crawl_results)}件のクロール結果を登録できます。")
 
-            for i, r in enumerate(st.session_state.crawl_results, start=1):
-                progress_text.write(f"📥 {i} / {total} 件登録中...")
-                insert_document(r)
-                progress_bar.progress(i / total)
+#         if st.button("💾 全てインデックスに登録"):
+#             total = len(st.session_state.crawl_results)
 
-            progress_text.write(f"✅ {total} / {total} 件 登録完了！")
-            st.success(f"{total}件 登録完了！")
-            st.session_state.crawl_results = []
-            st.cache_resource.clear()
-            st.rerun()
+#             progress_text = st.empty()
+#             progress_bar = st.progress(0)
+
+#             for i, r in enumerate(st.session_state.crawl_results, start=1):
+#                 progress_text.write(f"📥 {i} / {total} 件登録中...")
+#                 insert_document(r)
+#                 progress_bar.progress(i / total)
+
+#             progress_text.write(f"✅ {total} / {total} 件 登録完了！")
+#             st.success(f"{total}件 登録完了！")
+#             st.session_state.crawl_results = []
+#             st.cache_resource.clear()
+#             st.rerun()
 
 # ── 一覧ページ ───────────────────────────────────────────────────
-elif selected == "📋 一覧":
-    st.subheader(f"📋 登録済みページ一覧（{len(pages)} 件）")
-    if not pages:
-        st.info("登録されているページがありません。クローラータブからページを追加してください。")
-    else:
-        for page in pages:
-            with st.expander(f"📄 {page['title']}"):
-                st.markdown(f"**URL：** {page['url']}")
-                st.markdown(f"**説明：** {page.get('description', '（なし）') or '（なし）'}")
-                col1, col2, col3 = st.columns(3)
-                with col1: st.caption(f"語数：{page.get('word_count', 0)}")
-                with col2: st.caption(f"作成者：{page.get('author', '不明') or '不明'}")
-                with col3: st.caption(f"カテゴリ：{page.get('category', '未分類') or '未分類'}")
+elif selected == "📋 社外情報一覧":
+    st.subheader("📋 社外情報一覧")
+    st.info("🚧 準備中です。しばらくお待ちください。")
+# elif selected == "📋 社外情報一覧":
+#     st.subheader(f"📋 登録済みページ一覧（{len(pages)} 件）")
+#     if not pages:
+#         st.info("登録されているページがありません。クローラータブからページを追加してください。")
+#     else:
+#         for page in pages:
+#             with st.expander(f"📄 {page['title']}"):
+#                 st.markdown(f"**URL：** {page['url']}")
+#                 st.markdown(f"**説明：** {page.get('description', '（なし）') or '（なし）'}")
+#                 col1, col2, col3 = st.columns(3)
+#                 with col1: st.caption(f"語数：{page.get('word_count', 0)}")
+#                 with col2: st.caption(f"作成者：{page.get('author', '不明') or '不明'}")
+#                 with col3: st.caption(f"カテゴリ：{page.get('category', '未分類') or '未分類'}")
 
 
 
