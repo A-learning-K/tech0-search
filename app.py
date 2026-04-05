@@ -1,6 +1,6 @@
 """
 app.py — Tech0 Search v1.0（完成版）
-Streamlit アプリ本体。検索・クローラー・一覧の3タブ構成。
+Streamlit アプリ本体。
 """
 
 import re
@@ -24,7 +24,7 @@ if len(get_all_documents()) == 0:
     load_posts()
 
 st.set_page_config(
-    page_title="TECHZERON SEARCH ポータル",
+    page_title="TECHZERON WORKS ポータル",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -184,7 +184,7 @@ st.markdown("""
     </svg>
   </div>
   <span style="font-size:13px;font-weight:500;color:#2e2820;">
-    TECHZERON<b style="color:#E85D24;"> SEARCH</b> ポータル
+    TECHZERON<b style="color:#E85D24;"> WORKS</b> ポータル
   </span>
 </div>
 """, unsafe_allow_html=True)
