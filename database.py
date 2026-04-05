@@ -56,15 +56,16 @@ def insert_document(document: dict) -> int:    #pageをdocumentに変更
 
     cursor.execute("""
         INSERT OR REPLACE INTO documents                        
-            (title, department, author, category, keywords, full_text, word_count)  
+            (title, department, author, category, keywords, url, full_text, word_count)  
 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         document["title"],              #pageからdocumentに変更
         document.get("department", ""), #pageからdocumentに変更
         document.get("author", ""),      # ← authorを3番目に
         document.get("category", ""),    # ← categoryを4番目に
         document.get("keywords", ""),    # ← keywordsを5番目に
+        document.get("url", ""),
         document.get("full_text", ""),   # ← full_textを6番目に
         document.get("word_count", 0),   # ← word_countを7番目に        
     ))

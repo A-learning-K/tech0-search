@@ -150,7 +150,11 @@ footer, #MainMenu { display: none; }
 # ── セッションステートの初期化 ────────────────────────────────
 if "oyobidashi_flags" not in st.session_state:
     st.session_state["oyobidashi_flags"] = {}
-
+if "jump_to_post" not in st.session_state:
+    st.session_state["jump_to_post"] = None
+if "nav_index" not in st.session_state:
+    st.session_state["nav_index"] = None
+    
 # ── キャッシュ付きインデックス構築 ─────────────────────────────
 @st.cache_resource
 def load_and_index():
@@ -194,7 +198,9 @@ with st.sidebar:
         icons=["search", "chat-square-text", "database-add", "card-list"],
         menu_icon="cast",
         default_index=0,
-        orientation="vertical",
+        manual_select=st.session_state["nav_index"],
+        key="main_menu",
+        orientation="vertical", 
         styles={
             "container": {"padding": "0!important", "background-color": "#e3dccf"},
             "icon": {"color": "#826548", "font-size": "15px"},
@@ -214,6 +220,7 @@ with st.sidebar:
             },
         }
     )
+    st.session_state["nav_index"] = None
 
  #------HOT欄---------
     st.subheader("🔥 今話題の投稿")
@@ -239,6 +246,10 @@ with st.sidebar:
                     st.caption(f"👍 {like_count}")
                 with col_comment:
                     st.caption(f"💬 {comment_count}")
+                if st.button("📌 投稿を見る", key=f"hot_jump_{post['id']}"):
+                    st.session_state["jump_to_post"] = post["id"]
+                    st.session_state["nav_index"] = 1
+                    st.rerun()
 
 
 # ── 検索ページ ───────────────────────────────────────────────────
@@ -269,7 +280,11 @@ if selected == "🔍 社内情報検索":
                         medal = ["🥇", "🥈", "🥉"][i - 1] if i <= 3 else str(i)
                         st.markdown(f"### {medal}")
                     with col_title:
-                        st.markdown(f"### {page['title']}")
+                        url = page.get("url", "")
+                        if url:
+                            st.markdown(f"### [{page['title']}]({url})")
+                        else:
+                            st.markdown(f"### {page['title']}")
                     with col_score:
                         # relevance_score（最終スコア）と base_score（TF-IDFのみ）を両方表示
                         st.metric("スコア", f"{page['relevance_score']}",
@@ -369,6 +384,14 @@ elif selected == "💡 投稿":
     all_posts = get_all_posts()
     st.subheader(f"📋 投稿一覧（{len(all_posts)} 件）")
 
+    jump_id = st.session_state.get("jump_to_post")
+    if jump_id:
+        # 該当投稿のみ表示
+        if st.button("← 投稿一覧に戻る"):
+            st.session_state["jump_to_post"] = None
+            st.rerun()
+        all_posts = [p for p in all_posts if p["id"] == jump_id]
+    
     if not all_posts:
         st.info("まだ投稿がありません。")
     else:
@@ -378,6 +401,7 @@ elif selected == "💡 投稿":
             else:
                 display_name = post["name"]
 
+            
             with st.container(border=True):
                 st.markdown(f"**{post['title']}**　`{post['category']}`")  # ← 追加
                 st.markdown(f"**{display_name}**　{post['posted_at'][:10]}")
